@@ -17,6 +17,7 @@ const RPM_LIMIT_ESTIMATE = 12;
 
 function App() {
   const [query, setQuery] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
   const [refinement, setRefinement] = useState('');
   const [audience, setAudience] = useState<AudienceLevel>('sprout');
   const [status, setStatus] = useState<AppStatus>('idle');
@@ -76,6 +77,8 @@ function App() {
   const processSearch = async (searchQuery: string, level: AudienceLevel = audience) => {
     if (!searchQuery.trim() || status === 'quota_limit') return;
 
+    setActiveQuery(searchQuery);
+    setQuery(searchQuery);
     setStatus('generating');
     setError(null);
     try {
@@ -102,18 +105,41 @@ function App() {
   const handleRefine = (e: React.FormEvent) => {
     e.preventDefault();
     if (!refinement.trim() || status === 'quota_limit') return;
-    processSearch(`${query}. Refinement: ${refinement}`);
+    const base = activeQuery || query || "visualization";
+    const combined = `${base}. Iteration refinement: ${refinement}`;
+    processSearch(combined);
     setRefinement('');
   };
 
   const handleDownload = () => {
     if (!data?.media.url) return;
-    const link = document.createElement('a');
-    link.href = data.media.url;
-    link.download = `lumina-capture-${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (data.media.url.startsWith('data:image/svg+xml')) {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 1200;
+        canvas.height = img.height || 675;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const pngUrl = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = pngUrl;
+          link.download = `lumina-capture-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      };
+      img.src = data.media.url;
+    } else {
+      const link = document.createElement('a');
+      link.href = data.media.url;
+      link.download = `lumina-capture-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const quotaPercent = Math.min((requestCount / RPM_LIMIT_ESTIMATE) * 100, 100);
