@@ -105,8 +105,9 @@ function App() {
   const handleRefine = (e: React.FormEvent) => {
     e.preventDefault();
     if (!refinement.trim() || status === 'quota_limit') return;
-    const base = activeQuery || query || "visualization";
-    const combined = `${base}. Iteration refinement: ${refinement}`;
+    const base = activeQuery || query || "bank check template";
+    const combined = `${base}. Iteration refinement style: ${refinement}`;
+    setQuery(combined);
     processSearch(combined);
     setRefinement('');
   };
