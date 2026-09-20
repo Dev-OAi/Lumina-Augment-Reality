@@ -1,6 +1,6 @@
 {
-  "name": "Lumina - Veo Explorer",
-  "description": "Cinematic AI visualization with multi-tier augmented canvas analysis.",
+  "name": "Lumina - Neural Visual Core",
+  "description": "Transform complex descriptions into cinematic insights through neural synthesis and interactive augmented exploration.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

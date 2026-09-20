@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -17,7 +18,6 @@ const RPM_LIMIT_ESTIMATE = 12;
 
 function App() {
   const [query, setQuery] = useState('');
-  const [activeQuery, setActiveQuery] = useState('');
   const [refinement, setRefinement] = useState('');
   const [audience, setAudience] = useState<AudienceLevel>('sprout');
   const [status, setStatus] = useState<AppStatus>('idle');
@@ -77,8 +77,6 @@ function App() {
   const processSearch = async (searchQuery: string, level: AudienceLevel = audience) => {
     if (!searchQuery.trim() || status === 'quota_limit') return;
 
-    setActiveQuery(searchQuery);
-    setQuery(searchQuery);
     setStatus('generating');
     setError(null);
     try {
@@ -105,42 +103,18 @@ function App() {
   const handleRefine = (e: React.FormEvent) => {
     e.preventDefault();
     if (!refinement.trim() || status === 'quota_limit') return;
-    const base = activeQuery || query || "bank check template";
-    const combined = `${base}. Iteration refinement style: ${refinement}`;
-    setQuery(combined);
-    processSearch(combined);
+    processSearch(`${query}. Refinement: ${refinement}`);
     setRefinement('');
   };
 
   const handleDownload = () => {
     if (!data?.media.url) return;
-    if (data.media.url.startsWith('data:image/svg+xml')) {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width || 1200;
-        canvas.height = img.height || 675;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          const pngUrl = canvas.toDataURL('image/png');
-          const link = document.createElement('a');
-          link.href = pngUrl;
-          link.download = `lumina-capture-${Date.now()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      };
-      img.src = data.media.url;
-    } else {
-      const link = document.createElement('a');
-      link.href = data.media.url;
-      link.download = `lumina-capture-${Date.now()}.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    const link = document.createElement('a');
+    link.href = data.media.url;
+    link.download = `lumina-capture-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const quotaPercent = Math.min((requestCount / RPM_LIMIT_ESTIMATE) * 100, 100);
@@ -277,88 +251,116 @@ function App() {
                  </div>
                </div>
              </motion.div>
-           ) : status === 'idle' ? (
-             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full max-w-2xl px-8 text-center">
-               <motion.div 
-                 initial={{ scale: 0.9, opacity: 0 }}
-                 animate={{ scale: 1, opacity: 1 }}
-                 className="mb-6 inline-block px-5 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black text-cyan-400 uppercase tracking-[0.5em]"
-               >
-                 Neural Visual Core v2.8 {isLiteMode && "(Lite Activated)"}
-               </motion.div>
-               <h1 className="text-7xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 leading-[0.9] tracking-tighter uppercase">Augment Reality.</h1>
-               <p className="text-gray-500 mb-12 text-2xl font-light">Transform complex descriptions into cinematic insights through neural synthesis.</p>
-               
-               <form onSubmit={(e) => { e.preventDefault(); processSearch(query); }} className="relative group">
-                 <div className={`absolute -inset-1.5 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition-opacity duration-700 bg-gradient-to-r ${isLiteMode ? 'from-amber-500 to-orange-600' : 'from-cyan-500 to-purple-600'}`}></div>
-                 <div className="relative bg-zinc-950 border border-white/10 rounded-[1.8rem] p-3 flex gap-3 shadow-2xl">
-                    <input 
-                     className="flex-1 bg-transparent px-6 py-5 outline-none text-2xl placeholder-white/20 font-light" 
-                     placeholder="Describe what to synthesize..." 
-                     value={query} 
-                     onChange={e => setQuery(e.target.value)} 
-                    />
-                    <button 
-                     disabled={!query.trim()} 
-                     className={`px-10 rounded-2xl font-black transition-all duration-300 disabled:opacity-50 active:scale-95 shadow-xl ${isLiteMode ? 'bg-amber-400 text-black hover:bg-amber-300' : 'bg-white text-black hover:bg-cyan-400'}`}
-                    >
-                     <Search size={26} />
-                    </button>
-                 </div>
-               </form>
-               {isLiteMode && (
-                 <p className="mt-6 text-amber-500/60 text-[10px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2">
-                   <Cpu size={12} /> Neural efficiency mode enabled
-                 </p>
-               )}
-               {error && <p className="mt-10 text-red-400 text-sm font-mono tracking-wide uppercase flex items-center justify-center gap-2"><AlertTriangle size={14} /> {error}</p>}
-             </motion.div>
-           ) : status === 'generating' || status === 'analyzing' ? (
-             <LoadingState key="loader" />
-           ) : (
-             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full h-full p-4 flex flex-col">
-               <div className="flex-1 relative">
-                 <AugmentedCanvas image={data?.media.url} analysis={data?.analysis} isScanning={status === 'analyzing'} />
-                 {status === 'complete' && (
-                   <>
-                     <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 flex gap-4">
-                       <form onSubmit={handleRefine} className="bg-black/90 backdrop-blur-3xl border border-white/10 rounded-full p-2 pl-10 flex-1 flex items-center gap-4 shadow-[0_30px_60px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
-                         <MessageSquarePlus size={22} className="text-cyan-400" />
-                         <input className="bg-transparent flex-1 outline-none text-lg h-14" placeholder="Iterate on this visualization..." value={refinement} onChange={e => setRefinement(e.target.value)} />
-                         <button className="p-4 bg-white text-black rounded-full hover:bg-cyan-400 transition-all active:scale-90 shadow-lg"><ChevronRight size={26} /></button>
-                       </form>
-                     </div>
-                     
-                     <div className="absolute bottom-12 right-12 flex flex-col gap-6">
-                       <motion.button 
-                         whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
-                         whileTap={{ scale: 0.9 }}
-                         onClick={() => processSearch(query)}
-                         className="p-5 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 text-white rounded-3xl shadow-2xl flex items-center justify-center ring-1 ring-white/5"
-                         title="Regenerate Visualization"
-                       >
-                         <RefreshCw size={28} />
-                       </motion.button>
-                       
-                       <motion.button 
-                         whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
-                         whileTap={{ scale: 0.9 }}
-                         onClick={handleDownload}
-                         className="p-5 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 text-white rounded-3xl shadow-2xl flex items-center justify-center ring-1 ring-white/5"
-                         title="Export high-res"
-                       >
-                         <Download size={28} />
-                       </motion.button>
-                     </div>
-                   </>
-                 )}
-               </div>
-             </motion.div>
-           )}
-         </AnimatePresence>
-       </main>
-     </div>
-   );
- }
+          ) : status === 'idle' ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="w-full max-w-2xl px-8 text-center">
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="mb-6 inline-block px-5 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black text-cyan-400 uppercase tracking-[0.5em]"
+              >
+                Neural Visual Core v2.8 {isLiteMode && "(Lite Activated)"}
+              </motion.div>
+              <h1 className="text-7xl font-black mb-6 bg-clip-text text-transparent bg-gradient-to-b from-white to-white/40 leading-[0.9] tracking-tighter uppercase">Augment Reality.</h1>
+              <p className="text-gray-500 mb-12 text-2xl font-light">Transform complex descriptions into cinematic insights through neural synthesis.</p>
+              
+              <form onSubmit={(e) => { e.preventDefault(); processSearch(query); }} className="relative group">
+                <div className={`absolute -inset-1.5 rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition-opacity duration-700 bg-gradient-to-r ${isLiteMode ? 'from-amber-500 to-orange-600' : 'from-cyan-500 to-purple-600'}`}></div>
+                <div className="relative bg-zinc-950 border border-white/10 rounded-[1.8rem] p-3 flex gap-3 shadow-2xl">
+                   <input 
+                    className="flex-1 bg-transparent px-6 py-5 outline-none text-2xl placeholder-white/20 font-light" 
+                    placeholder="Describe what to synthesize..." 
+                    value={query} 
+                    onChange={e => setQuery(e.target.value)} 
+                   />
+                   <button 
+                    disabled={!query.trim()} 
+                    className={`px-10 rounded-2xl font-black transition-all duration-300 disabled:opacity-50 active:scale-95 shadow-xl ${isLiteMode ? 'bg-amber-400 text-black hover:bg-amber-300' : 'bg-white text-black hover:bg-cyan-400'}`}
+                   >
+                    <Search size={26} />
+                   </button>
+                </div>
+              </form>
 
- export default App;
+              {/* Perspective selector for analysis */}
+              <div className="mt-8 flex items-center justify-center gap-3">
+                <span className="text-[9px] uppercase tracking-[0.3em] text-white/30 font-bold mr-2">Perspective:</span>
+                {(['seed', 'sprout', 'oak'] as AudienceLevel[]).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setAudience(level)}
+                    className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+                      audience === level 
+                        ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]' 
+                        : 'bg-white/5 text-white/40 border border-white/5 hover:bg-white/10'
+                    }`}
+                  >
+                    {level === 'seed' ? 'Simple' : level === 'sprout' ? 'Curious' : 'Expert'}
+                  </button>
+                ))}
+              </div>
+
+              {isLiteMode && (
+                <p className="mt-6 text-amber-500/60 text-[10px] font-black uppercase tracking-[0.4em] flex items-center justify-center gap-2">
+                  <Cpu size={12} /> Neural efficiency mode enabled
+                </p>
+              )}
+              {error && (
+                <div className="mt-8 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl max-w-xl mx-auto">
+                  <p className="text-red-400 text-xs font-mono tracking-wide flex items-center justify-center gap-2">
+                    <AlertTriangle size={16} className="shrink-0" />
+                    <span>{error}</span>
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          ) : status === 'generating' || status === 'analyzing' ? (
+            <LoadingState key="loader" />
+          ) : (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full h-full p-4 flex flex-col">
+              <div className="flex-1 relative">
+                <AugmentedCanvas image={data?.media.url} analysis={data?.analysis} isScanning={status === 'analyzing'} />
+                {status === 'complete' && (
+                  <>
+                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 flex gap-4">
+                      <form onSubmit={handleRefine} className="bg-black/90 backdrop-blur-3xl border border-white/10 rounded-full p-2 pl-10 flex-1 flex items-center gap-4 shadow-[0_30px_60px_rgba(0,0,0,0.6)] ring-1 ring-white/5">
+                        <MessageSquarePlus size={22} className="text-cyan-400" />
+                        <input className="bg-transparent flex-1 outline-none text-lg h-14" placeholder="Iterate on this visualization..." value={refinement} onChange={e => setRefinement(e.target.value)} />
+                        <button className="p-4 bg-white text-black rounded-full hover:bg-cyan-400 transition-all active:scale-90 shadow-lg"><ChevronRight size={26} /></button>
+                      </form>
+                    </div>
+                    
+                    <div className="absolute bottom-12 right-12 flex flex-col gap-6">
+                      <motion.button 
+                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => processSearch(query)}
+                        className="p-5 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 text-white rounded-3xl shadow-2xl flex items-center justify-center ring-1 ring-white/5"
+                        title="Regenerate Visualization"
+                      >
+                        <RefreshCw size={28} />
+                      </motion.button>
+                      
+                      <motion.button 
+                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.15)" }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={handleDownload}
+                        className="p-5 bg-zinc-900/90 backdrop-blur-3xl border border-white/10 text-white rounded-3xl shadow-2xl flex items-center justify-center ring-1 ring-white/5"
+                        title="Export high-res"
+                      >
+                        <Download size={28} />
+                      </motion.button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
+
+export default App;
+
